@@ -166,3 +166,8 @@ def run():
 
     with app.app_context():
         execute_command(args.command)
+
+
+def philo_app(f):
+    def func(f):
+       app = init_app(__name__, BASE_DIR)
