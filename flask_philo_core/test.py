@@ -1,3 +1,4 @@
+from flask import current_app
 from flask_philo_core import init_app
 from decimal import Decimal
 from unittest.mock import Mock, patch
@@ -7,11 +8,6 @@ import random
 import string
 import sys
 import uuid
-
-
-def create_test_app(name, base_dir):
-    app = init_app(name, base_dir)
-    return app
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -30,8 +26,13 @@ class FlaskPhiloTestCase(object):
     }
 
     def setup(self):
-        self.app = BaseTestFactory.create_test_app(
-            config=self.config, urls=self.urls)
+        try:
+            self.app = current_app._get_current_object()
+            self.app.logger.debug('Retreive app {}'.format(self.app))
+        except Exception:
+            self.app = BaseTestFactory.create_test_app(
+                config=self.config, urls=self.urls)
+            self.app.logger.debug('Create app {}'.format(self.app))
 
 
 class BaseTestFactory(object):
@@ -55,7 +56,7 @@ class BaseTestFactory(object):
             with patch.dict(
                 os.environ, {
                     'FLASK_PHILO_SETTINGS_MODULE': 'config.settings'}):
-                return create_test_app(__name__, BASE_DIR)
+                return init_app(__name__)
 
     @classmethod
     def create_uuid(cls):

@@ -1,11 +1,8 @@
-from flask import Flask, json
-from flask.globals import g, request
-
+from flask import Flask
 from . import default_settings
 from . import philo_commands
 from .exceptions import ConfigurationError
 from .logger import init_logging
-from .jinja2 import create_environment as create_philo_env
 
 import argparse
 import importlib
@@ -13,7 +10,7 @@ import os
 import sys
 
 
-__version__ = '0.4.0'
+__version__ = '0.5.0'
 
 
 class GenericSingleton:
@@ -35,35 +32,17 @@ class Plugins(GenericSingleton):
 class PhiloFlask(Flask):
     plugins = Plugins()
 
-    def create_jinja_environment(self):
-        """Overrides Flask `create_jinja_environment` function to add
-        support for custom extensions
-        """
-        if 'JINJA2_TEMPLATES' not in self.config:
-            # If not custom configuration, jinja will initialize with
-            # Flask defaults
-            return super(PhiloFlask, self).create_jinja_environment()
-        else:
-            rv = create_philo_env(**self.config['JINJA2_TEMPLATES'])
-            rv.globals.update(
-                config=self.config,
-                # request, session and g are normally added with the
-                # context processor for efficiency reasons but for imported
-                # templates we also want the proxies in there.
-                request=request,
-                g=g
-            )
-            rv.filters['tojson'] = json.tojson_filter
-            return rv
-
 
 def init_urls(app):
     if 'URLS' in app.config:
-        # Read urls from file and bind routes and views
+        # URLS is a tuple of dictionary, every dictionary represent a rule
+        # http://flask.pocoo.org/docs/0.12/api/#flask.Flask.add_url_rule
         urls_module = importlib.import_module(app.config['URLS'])
-        for route in urls_module.URLS:
-            app.add_url_rule(
-                route[0], view_func=route[1].as_view(route[2]))
+        for record in urls_module.URLS:
+            route = record.copy()
+            if 'rule' in route:
+                rule = route.pop('rule')
+                app.add_url_rule(rule, **route)
 
 
 def init_cors(app):
@@ -75,15 +54,13 @@ def init_cors(app):
         CORS(app, resources=app.config['CORS'])
 
 
-def init_config(app, base_dir):
+def init_config(app):
     """
     Load settings module and attach values to the application
     config dictionary
     """
     if 'FLASK_PHILO_SETTINGS_MODULE' not in os.environ:
         raise ConfigurationError('No settings has been defined')
-
-    app.config['base_dir'] = base_dir
 
     # Flask-Philo-Core default configuration values are
     # appended to the app configuration
@@ -109,14 +86,14 @@ def init_dbs(app):
             create_pool()
 
 
-def init_app(module, base_dir):
+def init_app(module):
     """
     Initalize an app, call this method once from start_app
     Implements Application Factory concept described at
     http://flask.pocoo.org/docs/1.0/patterns/appfactories/#app-factories
     """
     app = PhiloFlask(module)
-    init_config(app, base_dir)
+    init_config(app)
     init_logging(app)
     init_urls(app)
     init_cors(app)
@@ -162,12 +139,15 @@ def run():
     args, extra_params = parser.parse_known_args()
     os.environ.setdefault('FLASK_PHILO_SETTINGS_MODULE', args.settings)
 
-    app = init_app(__name__, BASE_DIR)
+    app = init_app(__name__)
 
     with app.app_context():
         execute_command(args.command)
 
 
-def philo_app(f):
-    def func(f):
-       app = init_app(__name__, BASE_DIR)
+def philo_app(f, *args, **kwargs):
+    def new_f(*args, **kwargs):
+        app = init_app(__name__)
+        with app.app_context():
+            return f(*args, **kwargs)
+    return new_f
