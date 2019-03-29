@@ -35,6 +35,7 @@ setup(
         'strict-rfc3339',
         'webcolors',
         'jsonschema',
+        'aws-lambda-wsgi'
     ],
     python_requires='>=3.6',
     classifiers=[

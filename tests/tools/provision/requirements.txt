@@ -8,3 +8,4 @@ strict-rfc3339
 webcolors
 jsonschema
 ipdb
+aws-lambda-wsgi

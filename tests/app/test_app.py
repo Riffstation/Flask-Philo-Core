@@ -1,6 +1,7 @@
-from flask import current_app
+from flask import current_app, json
 
 from flask_philo_core import init_app, philo_app
+from flask_philo_core.aws import aws_lambda
 from flask_philo_core.exceptions import ConfigurationError
 from unittest.mock import patch
 
@@ -49,3 +50,19 @@ def test_app_decorator():
             return True
 
         assert my_func(True, 1, 'context') is True
+
+
+def test_aws_lambda():
+
+    with patch.dict(
+        os.environ, {
+            'FLASK_PHILO_SETTINGS_MODULE': 'config.settings'}):
+
+        @philo_app
+        @aws_lambda
+        @philo_app
+        def post_func_view():
+            return json.dumps({'msg': 'ok'})
+
+        result = post_func_view()
+        print(result)
