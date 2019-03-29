@@ -10,7 +10,7 @@ flask projects, json validation and unit testing.
 
 setup(
     name='Flask-Philo-Core',
-    version='0.4.0',
+    version='0.5.0',
     description='Flask extension that provides a common framework for webapps',
     long_description='',
     packages=[
@@ -35,6 +35,7 @@ setup(
         'strict-rfc3339',
         'webcolors',
         'jsonschema',
+        'aws-lambda-wsgi'
     ],
     python_requires='>=3.6',
     classifiers=[
